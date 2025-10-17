@@ -5,3 +5,6 @@
 
 ## 2. CW Radar and Pulse Radar Systems
 - `Aim`: To model a CW Radar to estimate the Doppler Shift and calculate target velocity and to implement pulse radar system to estimate the target range.
+
+## 3. FMCW Radar Systems
+- `Aim`: To develop a MATLAB program that computes the range, azimuth angle, and elevation angle of multiple targets, using implementations of mathematical functions.
