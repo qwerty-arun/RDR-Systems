@@ -297,3 +297,109 @@ subplot(3,1,2); plot(real(rx)); title('Received Signal (Real Part)');
 subplot(3,1,3); plot(range_axis, y); hold on;
 plot(est_range, y(idx), 'ro'); title('Matched Filter Output'); xlabel('Range (m)');
 ```
+
+## Version-3
+```matlab
+clear; clc; close all;
+
+%% ====================== RADAR PARAMETERS ======================
+c = 3e8;                   % Speed of light (m/s)
+Tp = 1e-6;                 % Pulse width (1 µs)
+fs = 10e6;                  % Sampling frequency (10 MHz)
+R_target = 15e3;           % Target range (15 km)
+SNR_dB = 10;                % Signal-to-noise ratio (dB)
+
+% Multiple clutter sources (in meters)
+R_clutter = [5e3, 8e3, 12e3];       % Example: 5 km, 8 km, 12 km
+clutter_amplitude = [0.8, 0.6, 0.4]; % Reflection strengths
+
+%% ====================== DERIVED PARAMETERS ======================
+N = round(Tp * fs);         % Samples per pulse
+
+%% ====================== TRANSMITTED RECTANGULAR PULSE ======================
+% Create a long time vector to clearly see the full pulse
+t_tx = (0:5*N-1)/fs;         % 5 times the pulse duration
+tx_rect = zeros(1, length(t_tx));
+tx_rect(1:N) = 1;             % Pulse starts at t = 0
+
+%% ====================== RECEIVED SIGNAL (TARGET + MULTIPLE CLUTTER + NOISE) ======================
+% Convert ranges to delays (seconds)
+delay_target  = 2 * R_target / c;
+delay_clutter = 2 * R_clutter / c;
+
+% Convert delays to sample numbers
+n_delay_target  = round(delay_target  * fs);
+n_delay_clutter = round(delay_clutter * fs);
+
+% Create received signal buffer (long enough to contain all echoes)
+rx_length = length(t_tx) + n_delay_target + 200;
+rx_signal = zeros(1, rx_length);
+
+% Add clutter echoes
+for i = 1:length(R_clutter)
+    rx_signal(n_delay_clutter(i) + (1:N)) = ...
+        rx_signal(n_delay_clutter(i) + (1:N)) + clutter_amplitude(i) * tx_rect(1:N);
+end
+
+% Add target echo
+rx_signal(n_delay_target + (1:N)) = rx_signal(n_delay_target + (1:N)) + 1 * tx_rect(1:N);
+
+% Add AWGN noise
+rx_signal = awgn(rx_signal, SNR_dB, 'measured');
+
+% Time axis for received signal
+t_rx = (0:rx_length-1)/fs;   % seconds
+
+%% ====================== MATCHED FILTERING ======================
+mf = flip(tx_rect(1:N));             % Matched filter (time-reversed)
+mf_output = conv(rx_signal, mf, 'same');
+t_mf = (0:length(mf_output)-1)/fs;  % seconds
+
+%% ====================== TARGET & CLUTTER DETECTION ======================
+[pks, locs] = findpeaks(abs(mf_output), 'MinPeakHeight', 0.3*max(abs(mf_output)), ...
+    'MinPeakDistance', round(0.5e-6*fs));
+
+% Compute corresponding times & ranges
+detected_times = t_mf(locs);
+detected_ranges = detected_times * c / 2;
+
+% Identify target as largest peak
+[~, max_idx] = max(pks);
+target_time = detected_times(max_idx);
+target_range = detected_ranges(max_idx);
+
+fprintf('Detected Target Range = %.2f km\n', target_range/1000);
+
+%% ====================== PLOTS ======================
+figure('Position',[100 100 900 900]);
+
+% --- Transmitted Rectangular Pulse ---
+subplot(3,1,1);
+plot(t_tx*1e6, tx_rect, 'LineWidth', 1.5);
+title('Transmitted Rectangular Pulse (Long Time Axis)');
+xlabel('Time (\mus)');
+ylabel('Amplitude');
+grid on;
+
+% --- Received Signal ---
+subplot(3,1,2);
+plot(t_rx*1e6, rx_signal, 'LineWidth', 1);
+title('Received Signal (Target + Multiple Clutter + Noise)');
+xlabel('Time (\mus)');
+ylabel('Amplitude');
+grid on;
+
+% --- Matched Filter Output ---
+subplot(3,1,3);
+plot(t_mf*1e6, abs(mf_output), 'b', 'LineWidth', 1.3);
+hold on;
+plot(detected_times*1e6, pks, 'ro', 'MarkerFaceColor','r');
+title('Matched Filter Output (Pulse Compression)');
+xlabel('Time (\mus)');
+ylabel('|Amplitude|');
+legend('Matched Filter Output','Detected Peaks');
+grid on;
+% Display all detected ranges
+disp('Detected Echo Ranges (km):');
+disp(detected_ranges'/1000);
+```
