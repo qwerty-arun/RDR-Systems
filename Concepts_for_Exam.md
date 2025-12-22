@@ -1,8 +1,5 @@
 # Concepts for RADAR LAB Exam
 
-Below is a **radar-lab-exam–oriented, concept → intuition → equations → very simple MATLAB demo** guide.
-I’ve written this exactly in the way examiners expect answers, and the MATLAB snippets are **minimal, runnable, and explainable line-by-line**.
-
 ---
 
 # 1️⃣ Continuous Wave (CW) Radar
@@ -31,7 +28,7 @@ $$
 where
 
 * (v) = target velocity
-* (\lambda = \frac{c}{f_c})
+* $$(\lambda = \frac{c}{f_c})$$
 
 ## Key Points for Exam
 
